@@ -1,3 +1,8 @@
+use std::{
+    fs::File,
+    io::{self, BufRead, BufReader, Read},
+};
+
 use anyhow::{Ok, Result};
 use clap::Parser;
 
@@ -30,11 +35,51 @@ pub struct Args {
     bytes: Option<u64>,
 }
 
+pub fn open(filename: &str) -> Result<Box<dyn BufRead>> {
+    Ok(match filename {
+        "-" => Box::new(BufReader::new(io::stdin())),
+        _ => Box::new(BufReader::new(File::open(filename)?)),
+    })
+}
+
 pub fn run(args: Args) -> Result<()> {
     let files_len = args.files.len();
-    let lines = args.lines;
-    let bytes = args.bytes.unwrap_or(0);
-    println!("{files_len} {lines} {bytes}");
+    // println!("{:?} {}", args.bytes, args.lines);
+
+    for file in args.files.iter() {
+        if files_len > 1 {
+            println!("==> {file} <==");
+        }
+        let handle = open(file)?;
+        if let Some(bytes) = args.bytes {
+            let mut output = String::new();
+            BufReader::new(handle.take(bytes)).read_to_string(&mut output)?;
+            print!("{}", output);
+        } else {
+            let lines = handle.lines().take(args.lines.try_into()?);
+            // while let Some(line) = handle.lines().take(args.lines.try_into()?) {
+            //     println!("{}", line)
+            // }
+            // while let Some(line) = lines.next() {
+            //     println!("{:?}", line?);
+            // } else {
+            //     println!("");
+            // }
+            // for line in lines.next() {
+            // }
+
+            for line in lines {
+                println!("{}", line?);
+            }
+            // if lines.clone().count() == 0 {
+            //     println!("");
+            // } else {
+            //     for line in lines {
+            //         println!("{}", line?);
+            //     }
+            // }
+        }
+    }
     Ok(())
 }
 
