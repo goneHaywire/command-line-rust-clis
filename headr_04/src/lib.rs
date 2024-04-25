@@ -3,7 +3,7 @@ use std::{
     io::{self, BufRead, BufReader, Read},
 };
 
-use anyhow::{Ok, Result};
+use anyhow::Result;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -44,40 +44,35 @@ pub fn open(filename: &str) -> Result<Box<dyn BufRead>> {
 
 pub fn run(args: Args) -> Result<()> {
     let files_len = args.files.len();
-    // println!("{:?} {}", args.bytes, args.lines);
 
-    for file in args.files.iter() {
-        if files_len > 1 {
-            println!("==> {file} <==");
-        }
-        let handle = open(file)?;
-        if let Some(bytes) = args.bytes {
-            let mut output = String::new();
-            BufReader::new(handle.take(bytes)).read_to_string(&mut output)?;
-            print!("{}", output);
-        } else {
-            let lines = handle.lines().take(args.lines.try_into()?);
-            // while let Some(line) = handle.lines().take(args.lines.try_into()?) {
-            //     println!("{}", line)
-            // }
-            // while let Some(line) = lines.next() {
-            //     println!("{:?}", line?);
-            // } else {
-            //     println!("");
-            // }
-            // for line in lines.next() {
-            // }
-
-            for line in lines {
-                println!("{}", line?);
+    for (i, filename) in args.files.iter().enumerate() {
+        match open(filename) {
+            Err(e) => {
+                eprintln!("{filename}: {e}");
             }
-            // if lines.clone().count() == 0 {
-            //     println!("");
-            // } else {
-            //     for line in lines {
-            //         println!("{}", line?);
-            //     }
-            // }
+            Ok(mut handle) => {
+                if i != 0 {
+                    println!();
+                };
+                if files_len > 1 {
+                    println!("==> {filename} <==");
+                }
+                if let Some(bytes) = args.bytes {
+                    let mut buf = vec![0; bytes as usize];
+                    let bytes_read = handle.take(bytes).read(&mut buf)?;
+                    print!("{}", String::from_utf8_lossy(&buf[..bytes_read]));
+                } else {
+                    let mut line = String::new();
+                    for _ in 0..args.lines {
+                        let len = handle.read_line(&mut line)?;
+                        print!("{line}");
+                        if len == 0 {
+                            break;
+                        }
+                        line.clear();
+                    }
+                }
+            }
         }
     }
     Ok(())
