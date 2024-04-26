@@ -1,7 +1,5 @@
 mod stats;
 
-use std::io::Bytes;
-
 use anyhow::Result;
 use clap::Parser;
 
@@ -33,28 +31,23 @@ pub struct Cli {
 
 pub fn run() -> Result<()> {
     let args = get_args();
-    // dbg!(&args);
-    for filename in args.files.iter() {
-        match Stats::build(filename) {
+
+    let total: Stats = args
+        .files
+        .iter()
+        .map(|filename| (filename, Stats::build(filename)))
+        .inspect(|(filename, stats)| match stats {
             Err(err) => eprintln!("{filename}: {err}"),
-            Ok(stats) => {
-                if args.lines {
-                    print!("{:>8}", stats.lines);
-                }
-                if args.words {
-                    print!("{:>8}", stats.words);
-                }
-                if args.bytes {
-                    print!("{:>8}", stats.bytes);
-                }
-                if args.chars {
-                    print!("{:>8}", stats.chars);
-                }
-                println!(" {}", filename);
-                dbg!(stats);
-            }
-        }
+            Ok(stats) => stats.print_stats(&args),
+        })
+        .filter(|(_, stats)| Result::is_ok(stats))
+        .map(|(_, stats)| stats.unwrap())
+        .sum();
+
+    if args.files.len() > 1 {
+        total.print_stats(&args);
     }
+
     Ok(())
 }
 
