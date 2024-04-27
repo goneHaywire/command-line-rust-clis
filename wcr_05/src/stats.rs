@@ -1,9 +1,8 @@
 use std::{
     fs::File,
-    io::{self, BufRead, BufReader, Read},
+    io::{self, BufRead, BufReader},
     iter::Sum,
     ops::Add,
-    u8, vec,
 };
 
 use anyhow::Result;
@@ -40,34 +39,52 @@ impl Stats {
 
     fn count(file: &str) -> Result<(usize, usize, usize, usize)> {
         let (mut l, mut w, mut b, mut c): (usize, usize, usize, usize) = (0, 0, 0, 0);
-        let mut was_last_byte_spacing = false;
-        let mut last_utf8_char: Vec<u8> = vec::Vec::with_capacity(4);
+        let mut line_buf = String::new();
+        let mut file = open(file)?;
 
-        for byte in open(file)?.bytes() {
-            b += 1;
-            let byte = byte?;
-            last_utf8_char.push(byte);
+        // my original solution
+        // let mut was_last_byte_spacing = false;
+        // let mut last_utf8_char: Vec<u8> = vec::Vec::with_capacity(4);
 
-            if byte == b'\n' {
-                l += 1;
+        loop {
+            let line_bytes = file.read_line(&mut line_buf)?;
+            if line_bytes == 0 {
+                break;
             }
 
-            match (byte, was_last_byte_spacing) {
-                (b' ' | b'\t' | b'\n', false) => {
-                    w += 1;
-                    was_last_byte_spacing = true;
-                }
-                (b' ' | b'\t' | b'\n', true) => was_last_byte_spacing = true,
-                _ => {
-                    was_last_byte_spacing = false;
-                }
-            }
-
-            if String::from_utf8(last_utf8_char.clone()).is_ok() {
-                c += 1;
-                last_utf8_char.clear();
-            }
+            l += 1;
+            w += line_buf.split_whitespace().count();
+            b += line_bytes;
+            c += line_buf.chars().count();
+            line_buf.clear();
         }
+
+        // my original solution
+        // for byte in open(file)?.bytes() {
+        //     b += 1;
+        //     let byte = byte?;
+        //     last_utf8_char.push(byte);
+        //
+        //     if byte == b'\n' {
+        //         l += 1;
+        //     }
+        //
+        //     match (byte, was_last_byte_spacing) {
+        //         (b' ' | b'\t' | b'\n', false) => {
+        //             w += 1;
+        //             was_last_byte_spacing = true;
+        //         }
+        //         (b' ' | b'\t' | b'\n', true) => was_last_byte_spacing = true,
+        //         _ => {
+        //             was_last_byte_spacing = false;
+        //         }
+        //     }
+        //
+        //     if String::from_utf8(last_utf8_char.clone()).is_ok() {
+        //         c += 1;
+        //         last_utf8_char.clear();
+        //     }
+        // }
         Ok((l, w, b, c))
     }
 
