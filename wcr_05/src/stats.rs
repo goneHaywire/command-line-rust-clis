@@ -10,6 +10,13 @@ use anyhow::Result;
 use crate::Cli;
 
 #[derive(Debug)]
+/// file stats
+///
+/// * `filename`: file name
+/// * `lines`: lines number
+/// * `words`: words number
+/// * `bytes`: bytes number
+/// * `chars`: chars number
 pub struct Stats {
     pub filename: String,
     pub lines: usize,
